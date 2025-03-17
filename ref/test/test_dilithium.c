@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>  // Include time.h for measuring execution time
 #include "../randombytes.h"
 #include "../sign.h"
 
@@ -21,14 +22,32 @@ int main(void)
   uint8_t pk[CRYPTO_PUBLICKEYBYTES];
   uint8_t sk[CRYPTO_SECRETKEYBYTES];
 
-  snprintf((char*)ctx,CTXLEN,"test_dilitium");
+  snprintf((char*)ctx, CTXLEN, "test_dilithium");
+
+  // Start measuring time
+  clock_t start_time, end_time;
+  double keygen_time = 0.0, sign_time = 0.0, verify_time = 0.0;
 
   for(i = 0; i < NTESTS; ++i) {
     randombytes(m, MLEN);
 
+    // Measure key generation time
+    start_time = clock();
     crypto_sign_keypair(pk, sk);
+    end_time = clock();
+    keygen_time += ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+
+    // Measure signing time
+    start_time = clock();
     crypto_sign(sm, &smlen, m, MLEN, ctx, CTXLEN, sk);
+    end_time = clock();
+    sign_time += ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+
+    // Measure verification time
+    start_time = clock();
     ret = crypto_sign_open(m2, &mlen, sm, smlen, ctx, CTXLEN, pk);
+    end_time = clock();
+    verify_time += ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
 
     if(ret) {
       fprintf(stderr, "Verification failed\n");
@@ -64,6 +83,11 @@ int main(void)
   printf("CRYPTO_PUBLICKEYBYTES = %d\n", CRYPTO_PUBLICKEYBYTES);
   printf("CRYPTO_SECRETKEYBYTES = %d\n", CRYPTO_SECRETKEYBYTES);
   printf("CRYPTO_BYTES = %d\n", CRYPTO_BYTES);
+  
+  // Print average execution time
+  printf("Average Key Generation Time: %.6f seconds\n", keygen_time / NTESTS);
+  printf("Average Signing Time: %.6f seconds\n", sign_time / NTESTS);
+  printf("Average Verification Time: %.6f seconds\n", verify_time / NTESTS);
 
   return 0;
 }
